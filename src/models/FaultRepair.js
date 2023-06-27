@@ -12,11 +12,11 @@ const faultRepairSchema = new Schema({
     },
     time: {
         type: Date,
-        require: true,
+        required: true,
     },
     description: {
         type: String,
-        require: true,
+        required: true,
     },
     repairStatus: {
         type: String,

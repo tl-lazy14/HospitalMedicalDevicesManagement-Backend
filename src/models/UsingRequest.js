@@ -8,28 +8,28 @@ const usingRequestSchema = new Schema({
     },
     usageDepartment: {
         type: String,
-        require: true,
+        required: true,
     },
     deviceName: {
         type: String,
-        require: true,
+        required: true,
     },
     quantity: {
         type: Number,
-        require: true,
+        required: true,
     },
     startDate: {
         type: Date,
-        require: true,
+        required: true,
     },
     endDate: {
         type: Date,
-        require: true,
+        required: true,
     },
     status: {
         type: String,
         default: 'Đang chờ duyệt',
-        require: true,
+        required: true,
     },
 }, { timestamps: true });
 

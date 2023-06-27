@@ -2,7 +2,9 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const connectDB = require('./src/config/connectDB')
-const config = require('./src/config/config')
+const authRoute = require('./src/routes/auth');
+const userRoute = require('./src/routes/user');
+const config = require('./src/config/config');
 
 const app = express();
 
@@ -11,11 +13,10 @@ app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json())
 
-connectDB();
+app.use('/api/auth', authRoute);
+app.use('/api/user', userRoute);
 
-app.get('/', (req, res) => {
-  res.send('Hello, world!');
-});
+connectDB();
 
 const port = config.PORT;
 app.listen(port, () => {

@@ -2,50 +2,34 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const userSchema = new Schema({
-    staffID: {
+    userID: {
         type: String,
-        require: true,
+        required: true,
+        unique: true
     },
     email: {
         type: String,
-        require: true,
+        required: true,
+        unique: true
     },
     password: {
         type: String,
-        minLength: [6, 'Password must have more than 6 characters'],
-        require: true,
+        minlength: [6, 'Password must have more than 6 characters'],
+        required: true,
     },
     name: {
         type: String,
-        require: true,
+        required: true,
     },
-    role: {
+    isAdmin: {
         type: Boolean,
         default: false,
-        require: true,
+        required: true,
     },
     department: {
         type: String,
-        require: true,
+        required: true,
     },
-    usingRequestHistory: [
-        {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'UsingRequest',
-        }
-    ],
-    faultReportHistory: [
-        {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'FaultRepair',
-        }
-    ],
-    purchaseRequestHistory: [
-        {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'PurchaseRequest',
-        }
-    ],
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);

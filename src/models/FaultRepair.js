@@ -31,10 +31,10 @@ const faultRepairSchema = new Schema({
         type: String,
     },
     cost: {
-        type: Int16Array,
+        type: Number,
     },
 }, { timestamps: true });
 
-const FaultRepair = mongoose.model('FaultRepair', faultRepairSchema);
+const FaultRepair = mongoose.model('FaultRepair', faultRepairSchema)
 
 module.exports = FaultRepair;

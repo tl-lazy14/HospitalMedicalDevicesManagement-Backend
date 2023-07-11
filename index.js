@@ -4,6 +4,7 @@ const cors = require('cors');
 const connectDB = require('./src/config/connectDB')
 const authRoute = require('./src/routes/auth');
 const userRoute = require('./src/routes/user');
+const deviceRoute = require('./src/routes/device');
 const config = require('./src/config/config');
 
 const app = express();
@@ -15,6 +16,7 @@ app.use(express.json())
 
 app.use('/api/auth', authRoute);
 app.use('/api/user', userRoute);
+app.use('/api/device', deviceRoute);
 
 connectDB();
 

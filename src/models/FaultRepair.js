@@ -20,6 +20,8 @@ const faultRepairSchema = new Schema({
     },
     repairStatus: {
         type: String,
+        required: true,
+        default: 'Chờ quyết định',
     },
     startDate: {
         type: Date,

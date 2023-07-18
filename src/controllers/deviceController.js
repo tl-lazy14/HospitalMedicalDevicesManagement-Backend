@@ -3,11 +3,9 @@ const Using = require('../models/Using');
 const FaultRepair = require('../models/FaultRepair');
 const Maintenance = require('../models/Maintenance');
 
-const currentDate = new Date();
-
 // Khi có sự thay đổi cần cập nhật cache: delete cache[cacheKey]
 const dailyUsageStatusCache = {
-    date: currentDate,
+    date: new Date(''),
     cache: {},
 };
 
@@ -22,6 +20,7 @@ const isSameDate = (date1, date2) => {
 const getUsageStatus = async (deviceID) => {
   try {
     const cacheKey = `usageStatus:${deviceID}`;
+    const currentDate = new Date();
 
     // Kiểm tra nếu ngày hiện tại khác với ngày được cập nhật lần cuối, thực hiện reset cache
     if (!isSameDate(currentDate, dailyUsageStatusCache.date)) {
@@ -35,7 +34,7 @@ const getUsageStatus = async (deviceID) => {
 
     const faultRepair = await FaultRepair.find({ device: deviceID });
     const isFault = faultRepair.find(
-      (record) => !record.repairStatus || record.repairStatus === "Không sửa"
+      (record) => record.repairStatus === 'Chờ quyết định' || record.repairStatus === "Không sửa" || (record.repairStatus === 'Sửa' && !record.startDate)
     );
     if (isFault) {
       dailyUsageStatusCache.cache[cacheKey] = 'Hỏng';
@@ -191,6 +190,49 @@ const getStorageForFilter = async (req, res) => {
     }
 }
 
+const getDeviceByID = async (req, res) => {
+  try {
+      const id = req.params.id;
+      const device = await Device.findById(id);
+
+      if (!device) {
+        return res.status(404).json({ message: 'Thiết bị không được tìm thấy' });
+      }
+      const responseDevice = { ...device._doc };
+      responseDevice.usageStatus = await getUsageStatus(device._id);
+      res.status(200).json(responseDevice);
+  } catch (err) {
+      console.error('Error:', err);
+      res.status(500).json(err);
+  }
+}
+
+const getDeviceDueForMaintenance = async (req, res) => {
+    try {
+        const currentDate = new Date();
+        const twoWeeksFromNow = new Date(currentDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const devices = await Device.find();
+        const devicesDueForMaintenance = devices.map((device) => {
+          let nextMaintenanceDate = new Date(device.importationDate);
+          const cycle = Number(device.maintenanceCycle.split(' ')[0]);
+          while (nextMaintenanceDate < currentDate) {
+            nextMaintenanceDate = new Date(nextMaintenanceDate.getTime() + cycle * 30 * 24 * 60 * 60 * 1000);
+          }
+          return {
+            deviceID: device.deviceID,
+            deviceName: device.deviceName,
+            dueForMaintenance: nextMaintenanceDate <= twoWeeksFromNow,
+            date: nextMaintenanceDate,
+          };
+        }).filter((deviceInfo) => deviceInfo.dueForMaintenance).sort((a, b) => b.date - a.date);;
+
+        res.status(200).json(devicesDueForMaintenance);
+    } catch (err) {
+        console.error('Error:', err);
+        res.status(500).json(err);
+    }
+}
+
 const addDevice = async (req, res) => {
     try {
         const { deviceID, deviceName, serialNumber, classification, manufacturer, origin, 
@@ -281,4 +323,28 @@ const deleteDevice = async (req, res) => {
     }
 }
 
-module.exports = { getDevicesByConditions, getAllDevicesForExport, getManufacturerForFilter, getStorageForFilter, addDevice, updateDevice, deleteDevice, dailyUsageStatusCache };
+const getDeviceNameByID = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const device = await Device.findOne({ deviceID: id });
+        if (!device) res.status(200).json('');
+        else {
+          res.status(200).json(device.deviceName);
+        }
+    } catch (err) {
+        console.log('Error:', err);
+        res.status(500).json(err);
+    }
+}
+
+module.exports = { getDevicesByConditions, 
+  getAllDevicesForExport, 
+  getDeviceByID, 
+  getManufacturerForFilter, 
+  getStorageForFilter,
+  getDeviceDueForMaintenance, 
+  addDevice, 
+  updateDevice, 
+  deleteDevice, 
+  getDeviceNameByID,
+  dailyUsageStatusCache };

@@ -11,7 +11,7 @@ const {
     deleteDevice,
     getDeviceNameByID,
 } = require('../controllers/deviceController');
-const { verifyTokenAdminAuth } = require("../controllers/middlewareController");
+const { verifyTokenAdminAuth, verifyToken } = require("../controllers/middlewareController");
 
 const router = express.Router();
 
@@ -20,7 +20,7 @@ router.route("/devices/:id").get(verifyTokenAdminAuth, getDeviceByID).put(verify
 router.route("/export").get(verifyTokenAdminAuth, getAllDevicesForExport);
 router.route("/manufacturers").get(verifyTokenAdminAuth, getManufacturerForFilter);
 router.route("/storage-locations").get(verifyTokenAdminAuth, getStorageForFilter);
-router.route("/getName/:id").get(verifyTokenAdminAuth, getDeviceNameByID);
+router.route("/getName/:id").get(verifyToken, getDeviceNameByID);
 router.route("/maintenance/due").get(verifyTokenAdminAuth, getDeviceDueForMaintenance);
 
 module.exports = router;

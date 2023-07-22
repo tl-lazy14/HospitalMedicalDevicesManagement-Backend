@@ -123,6 +123,39 @@ const getUsageInfoByConditions = async (req, res) => {
     }
 };
 
+const getMyUsageRequest = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { selectedStatus, searchQuery, page, limit } = req.query;
+
+        const query = {};
+        if (selectedStatus) query.status = { $in: selectedStatus };
+        if (searchQuery) {
+            query.$or = [
+                { usageDepartment: { $regex: searchQuery, $options: 'i' } },
+                { deviceName: { $regex: searchQuery, $options: 'i' } } 
+            ]
+        }
+        query.requester = id;
+
+        const startIndex = (parseInt(page) - 1) * parseInt(limit);
+        const endIndex = startIndex + parseInt(limit);
+
+        const listUsageRequest = await UsageRequest.find(query)
+            .sort({ startDate: -1, endDate: -1 })
+
+        const totalRecords = await UsageRequest.countDocuments(query);
+        const totalPages = Math.ceil(totalRecords / parseInt(limit));
+
+        const usageRequest = listUsageRequest.slice(startIndex, endIndex);
+        
+        res.status(200).json({ list: usageRequest, totalRecords, totalPages });
+    } catch (err) {
+        console.error('Error:', err);
+        res.status(500).json(err);
+    }
+};
+
 const getUsageDepartmentRequestForFilter = async (req, res) => {
     try {
         const usageDepartments = await UsageRequest.distinct('usageDepartment');
@@ -197,6 +230,25 @@ const getAllUsageInfoForExport = async (req, res) => {
     }
 }
 
+const addUsageRequest = async (req, res) => {
+    try {
+        const usageRequest = req.body;
+        const newUsageRequest = new UsageRequest({
+            requester: new mongoose.Types.ObjectId(usageRequest.requester),
+            usageDepartment: usageRequest.usageDepartment,
+            deviceName: usageRequest.deviceName,
+            quantity: Number(usageRequest.quantity),
+            startDate: new Date(usageRequest.startDate),
+            endDate: new Date(usageRequest.endDate),
+        });
+        await newUsageRequest.save();
+        res.status(200).json({ message: 'Create usage request succesfully!' });
+    } catch (err) {
+        console.error('Error:', err);
+        res.status(500).json(err);
+    }
+}
+
 const addUsageInfo = async (req, res) => {
     try {
         const usageInfo = req.body;
@@ -213,7 +265,7 @@ const addUsageInfo = async (req, res) => {
             await newUsageInfo.save();
             delete dailyUsageStatusCache.cache[`usageStatus:${getDevice._id}`];
         }
-        res.status(200).json({ messag: 'Add usage info succesfully!' });
+        res.status(200).json({ message: 'Add usage info succesfully!' });
     } catch (err) {
         console.error('Error:', err);
         res.status(500).json(err);
@@ -249,6 +301,27 @@ const updateApproveStatus = async (req, res) => {
     }
 }
 
+const editUsageRequest = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const usageRequest = req.body;
+
+        const updatedRequest = {
+            usageDepartment: usageRequest.usageDepartment,
+            deviceName: usageRequest.deviceName,
+            quantity: Number(usageRequest.quantity),
+            startDate: new Date(usageRequest.startDate),
+            endDate: new Date(usageRequest.endDate),
+        };
+
+        const updatedUsageRequest = await UsageRequest.findByIdAndUpdate(id, updatedRequest, { new: true });
+        res.status(200).json(updatedUsageRequest);
+    } catch (err) {
+        console.error('Error:', err);
+        res.status(500).json(err);
+    }
+}
+
 const updateUsageInfo = async (req, res) => {
     try {
         const id = req.params.id;
@@ -274,6 +347,19 @@ const updateUsageInfo = async (req, res) => {
     }
 }
 
+const deleteUsageRequest = async (req, res) => {
+    try {
+        const id = req.params.id;
+
+        const deletedUsageRequest = await UsageRequest.findByIdAndDelete(id);
+
+        res.status(200).json(deletedUsageRequest);
+    } catch (err) {
+        console.error('Lỗi khi xóa:', err.message);
+        res.status(500).json({ error: 'Đã xảy ra lỗi khi xóa.' });
+    }
+}
+
 const deleteUsageInfo = async (req, res) => {
     try {
         const id = req.params.id;
@@ -287,8 +373,8 @@ const deleteUsageInfo = async (req, res) => {
 
         res.status(200).json(deletedUsageInfo);
     } catch (err) {
-        console.error('Lỗi khi xóa thiết bị:', err.message);
-        res.status(500).json({ error: 'Đã xảy ra lỗi khi xóa thiết bị.' });
+        console.error('Lỗi khi xóa:', err.message);
+        res.status(500).json({ error: 'Đã xảy ra lỗi khi xóa.' });
     }
 }
 
@@ -299,7 +385,12 @@ module.exports = { getUsageHistoryOfDevice,
     getUsageDepartment, 
     getUsingDevice,
     getAllUsageInfoForExport,
+    getMyUsageRequest,
+    addUsageRequest,
     addUsageInfo,
+    editUsageRequest,
     updateApproveStatus,
     updateUsageInfo,
-    deleteUsageInfo, };
+    deleteUsageRequest,
+    deleteUsageInfo, 
+};

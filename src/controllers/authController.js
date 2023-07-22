@@ -7,6 +7,17 @@ let refreshTokens = [];
 
 const registerUser = async (req, res) => {
     try {
+
+        const existUserID = await User.findOne({ userID: req.body.userID });
+        if (existUserID) {
+          return res.status(400).json({ error: 'Mã người vận hành đã tồn tại' });
+        }
+
+        const existEmail = await User.findOne({ email: req.body.email });
+        if (existEmail) {
+          return res.status(400).json({ error: 'Email đã tồn tại' });
+        }
+
         const salt = await bcrypt.genSalt(10);
         const hashed = await bcrypt.hash(req.body.password, salt);
 
@@ -113,4 +124,27 @@ const logoutUser = async (req, res) => {
     }
 }
 
-module.exports = { registerUser, loginUser, requestRefreshToken, logoutUser };
+const changePassword = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { currentPassword, newPassword } = req.body;
+
+        const user = await User.findById(id);
+
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+
+        if (!isMatch) {
+            return res.status(400).json({ error: 'Mật khẩu hiện tại không đúng' });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedNewPassword = await bcrypt.hash(newPassword, salt);
+
+        const changePSW = await User.findByIdAndUpdate(id, { $set: { password: hashedNewPassword } }, { new: true } ); 
+        res.status(200).json({ message: 'Đổi mật khẩu thành công' });
+    } catch (err) {
+        return res.status(500).json(err);
+    }
+}
+
+module.exports = { registerUser, loginUser, requestRefreshToken, logoutUser, changePassword };

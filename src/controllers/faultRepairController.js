@@ -2,6 +2,7 @@ const FaultRepair = require('../models/FaultRepair');
 const { dailyUsageStatusCache } = require('../controllers/deviceController');
 const Device = require('../models/Device');
 const User = require('../models/User');
+const mongoose = require('mongoose');
 
 const getFaultRepairHistoryOfDevice = async (req, res) => {
     try {
@@ -133,6 +134,68 @@ const getFaultRepairForExport = async (req, res) => {
     }
 };
 
+const getMyFaultReport = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { selectedStatus, searchQuery, page, limit } = req.query;
+
+        const query = {};
+        if (selectedStatus) query.repairStatus = { $in: selectedStatus };
+        const devices = await Device.find({
+            $or: [
+                { deviceID: { $regex: searchQuery, $options: 'i' } },
+                { deviceName: { $regex: searchQuery, $options: 'i' } }
+            ]
+        });
+        let deviceIds = [];
+        if (devices && devices.length > 0) deviceIds = devices.map(device => device._id);
+        if (searchQuery) {
+            query.$or = [
+                { device: { $in: deviceIds } },
+                { description: { $regex: searchQuery, $options: 'i' }} 
+            ]
+        }
+
+        query.reporter = id;
+
+        const startIndex = (parseInt(page) - 1) * parseInt(limit);
+        const endIndex = startIndex + parseInt(limit);
+
+        const listFaultReport = await FaultRepair.find(query)
+            .populate('device')
+            .sort({ time: -1 });
+
+        const totalRecords = await FaultRepair.countDocuments(query);
+        const totalPages = Math.ceil(totalRecords / parseInt(limit));
+
+        const result = listFaultReport.slice(startIndex, endIndex);
+        
+        res.status(200).json({ list: result, totalRecords, totalPages });
+    } catch (err) {
+        console.error('Error:', err);
+        res.status(500).json(err);
+    }
+};
+
+const addFaultReport = async (req, res) => {
+    try {
+        const faultReport = req.body;
+        const getDevice = await Device.findOne({ deviceID: faultReport.device.deviceID });
+        const newReport = new FaultRepair({
+            device: new mongoose.Types.ObjectId(getDevice._id),
+            reporter: new mongoose.Types.ObjectId(faultReport.reporter),
+            time: new Date(faultReport.time),
+            description: faultReport.description,
+        });
+        await newReport.save();
+        delete dailyUsageStatusCache.cache[`usageStatus:${getDevice._id}`];
+        res.status(200).json({ message: 'Create fault report succesfully!' });
+    } catch (err) {
+        console.error('Error:', err);
+        res.status(500).json(err);
+    }
+}
+
 const updateRepairDecision = async (req, res) => {
     try {
         const id = req.params.id;
@@ -174,12 +237,33 @@ const updateRepairInfo = async (req, res) => {
     }
 }
 
+const editFaultReport = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const report = req.body;
+
+        const updatedReport = {
+            time: new Date(report.time),
+            description: report.description
+        };
+
+        const updatedFaultReport = await FaultRepair.findByIdAndUpdate(id, updatedReport, { new: true });
+        res.status(200).json(updatedFaultReport);
+    } catch (err) {
+        console.error('Error:', err);
+        res.status(500).json(err);
+    }
+}
+
 module.exports = { 
     getFaultRepairHistoryOfDevice, 
     getFaultDevice, 
     getReparingDevice,
     getFaultInfoByConditions,
     getFaultRepairForExport,
+    getMyFaultReport,
+    addFaultReport,
     updateRepairDecision,
     updateRepairInfo,
+    editFaultReport,
 };
